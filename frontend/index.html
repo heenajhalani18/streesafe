@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreeSafe — Requester</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark"></span><span class="display">StreeSafe</span></div>
+  <div style="display:flex; align-items:center; gap:18px;">
+    <div class="nav-links" id="navLinks">
+      <a href="index.html" class="active">Requester</a>
+      <a href="responder.html">Responder</a>
+      <a href="admin.html">Admin</a>
+    </div>
+    <div id="userBadge" style="display:none; font-size:13px; color:var(--text-dim);"></div>
+  </div>
+</div>
+
+<!-- AUTH GATE -->
+<div class="container" id="authGate" style="max-width:420px;">
+  <div class="card">
+    <div class="section-title" id="authTitle">Log in</div>
+    <div id="authError" style="display:none; color:var(--alert); font-size:13px; margin-bottom:10px;"></div>
+
+    <div id="registerFields" style="display:none;">
+      <div class="field"><label>Name</label><input id="regName" placeholder="Your full name"></div>
+      <div class="field"><label>Phone</label><input id="regPhone" placeholder="+91-XXXXXXXXXX"></div>
+    </div>
+    <div class="field"><label>Email</label><input id="authEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="••••••••"></div>
+
+    <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" id="authSubmitBtn" onclick="submitAuth()">Log in</button>
+    <button class="btn" style="width:100%;" onclick="toggleAuthMode()" id="authToggleBtn">Don't have an account? Register</button>
+  </div>
+</div>
+
+<!-- MAIN APP (shown after login) -->
+<div class="container" id="mainApp" style="display:none;">
+  <div class="grid">
+    <div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="section-title">Live map — tap the map to rate an area's safety</div>
+        <div id="map"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="section-title">Safety assistant</div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg assistant">I'm here if you need guidance. Tell me what's happening and I'll pull up relevant steps while help is on the way.</div>
+        </div>
+        <div class="chat-input-row">
+          <input id="chatInput" placeholder="e.g. someone is following me" />
+          <button class="btn btn-safe" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Trusted contacts</div>
+        <div id="contactList" style="margin-bottom:14px;"></div>
+        <div style="display:flex; gap:8px;">
+          <input id="contactName" placeholder="Name" style="flex:1; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text);">
+          <input id="contactPhone" placeholder="Phone" style="flex:1; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text);">
+          <button class="btn" onclick="addContact()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="preSos">
+        <div class="sos-wrap">
+          <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+          <div class="sos-hint">Tap to alert the nearest responder, share your live location, and notify your trusted contacts.</div>
+        </div>
+      </div>
+
+      <div id="postSos" style="display:none;">
+        <div class="section-title">Incident</div>
+        <div style="margin-bottom:14px;">
+          <span id="statusPill" class="status-pill status-matched">Matched</span>
+        </div>
+        <div class="responder-card">
+          <div style="font-weight:500; margin-bottom:4px;" id="respName">—</div>
+          <div style="color:var(--text-dim); font-size:13px;" id="respMeta">—</div>
+        </div>
+        <div id="notifiedBox" style="margin-top:10px; font-size:12.5px; color:var(--text-dim);"></div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="btn btn-safe" style="flex:1" onclick="markResolved()">Mark safe</button>
+          <button class="btn" style="flex:1" onclick="downloadReport()">Get report</button>
+        </div>
+        <button class="btn" style="width:100%; margin-top:8px;" onclick="resetFlow()">New SOS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+let map, myMarker, respMarker, ws, incidentId, currentLat = 26.9124, currentLng = 75.7873;
+let unsafeMarkers = [];
+let isRegisterMode = false;
+
+function toggleAuthMode() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('registerFields').style.display = isRegisterMode ? 'block' : 'none';
+  document.getElementById('authTitle').textContent = isRegisterMode ? 'Create an account' : 'Log in';
+  document.getElementById('authSubmitBtn').textContent = isRegisterMode ? 'Register' : 'Log in';
+  document.getElementById('authToggleBtn').textContent = isRegisterMode ? 'Already have an account? Log in' : "Don't have an account? Register";
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errBox = document.getElementById('authError');
+  errBox.style.display = 'none';
+
+  try {
+    if (isRegisterMode) {
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      if (!name || !phone || !email || !password) throw new Error('Please fill in all fields');
+      await registerUser(name, email, phone, password);
+    } else {
+      if (!email || !password) throw new Error('Please enter email and password');
+      await loginUser(email, password);
+    }
+    showApp();
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+  }
+}
+
+function showApp() {
+  const user = getUser();
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  const badge = document.getElementById('userBadge');
+  badge.style.display = 'block';
+  badge.innerHTML = `${user.name} · <a href="#" onclick="logoutUser(); return false;" style="color:var(--alert);">Log out</a>`;
+  initMap();
+  loadContacts();
+  loadSafetyScores();
+}
+
+function initMap() {
+  map = L.map('map').setView([currentLat, currentLng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
+  myMarker = L.circleMarker([currentLat, currentLng], { radius: 8, color: '#E8543C', fillColor: '#E8543C', fillOpacity: 1 }).addTo(map).bindPopup('You');
+
+  map.on('click', (e) => {
+    openAuditModal(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+async function loadSafetyScores() {
+  const res = await fetch(`${API_BASE}/safety-audits`);
+  const audits = await res.json();
+  unsafeMarkers.forEach(m => map.removeLayer(m));
+  unsafeMarkers = audits.map(a => {
+    const color = a.safety_score >= 3.5 ? '#2BAF8F' : (a.safety_score >= 2 ? '#E8A63C' : '#E8543C');
+    return L.circleMarker([a.lat, a.lng], { radius: 7, color, fillColor: color, fillOpacity: 0.7 })
+      .addTo(map)
+      .bindPopup(`<b>Safety score: ${a.safety_score}/5</b><br>${a.notes || 'No details'}`);
+  });
+}
+
+const AUDIT_PARAMS = [
+  ['lighting', 'Lighting'],
+  ['openness', 'Openness'],
+  ['visibility', 'Visibility from shops/windows'],
+  ['people_presence', 'People around'],
+  ['security', 'Police/security presence'],
+  ['walk_path', 'Walk path / pavement'],
+  ['public_transport', 'Public transport access'],
+  ['gender_usage', 'Women/children present'],
+  ['feeling', 'How safe it feels'],
+];
+let pendingAuditLat = null, pendingAuditLng = null;
+
+function openAuditModal(lat, lng) {
+  pendingAuditLat = lat;
+  pendingAuditLng = lng;
+  const container = document.getElementById('auditSliders');
+  container.innerHTML = AUDIT_PARAMS.map(([key, label]) => `
+    <div class="field">
+      <label>${label}: <span id="val_${key}">3</span>/5</label>
+      <input type="range" min="1" max="5" value="3" id="slider_${key}"
+        oninput="document.getElementById('val_${key}').textContent = this.value"
+        style="width:100%;">
+    </div>
+  `).join('');
+  document.getElementById('auditModal').style.display = 'flex';
+}
+
+function closeAuditModal() {
+  document.getElementById('auditModal').style.display = 'none';
+}
+
+async function submitAudit() {
+  const payload = { lat: pendingAuditLat, lng: pendingAuditLng, notes: document.getElementById('auditNotes').value };
+  AUDIT_PARAMS.forEach(([key]) => {
+    payload[key] = parseInt(document.getElementById(`slider_${key}`).value, 10);
+  });
+  await fetch(`${API_BASE}/safety-audits`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload)
+  });
+  closeAuditModal();
+  loadSafetyScores();
+}
+
+async function triggerSOS() {
+  const res = await fetch(`${API_BASE}/incidents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ lat: currentLat, lng: currentLng })
+  });
+
+  if (!res.ok) {
+    alert('No responders available right now. Try the demo again in a moment.');
+    return;
+  }
+  const data = await res.json();
+  incidentId = data.incident_id;
+
+  document.getElementById('preSos').style.display = 'none';
+  document.getElementById('postSos').style.display = 'block';
+  document.getElementById('respName').textContent = data.responder.name;
+  document.getElementById('respMeta').textContent = `${data.distance_km} km away · ETA ~${data.eta_minutes} min`;
+  setStatus(data.status);
+
+  const notifiedBox = document.getElementById('notifiedBox');
+  notifiedBox.textContent = data.notified_contacts.length
+    ? `Notified: ${data.notified_contacts.map(c => c.name).join(', ')}`
+    : 'No trusted contacts to notify yet — add some below.';
+
+  respMarker = L.circleMarker([data.responder.lat, data.responder.lng], { radius: 8, color: '#2BAF8F', fillColor: '#2BAF8F', fillOpacity: 1 }).addTo(map).bindPopup(data.responder.name);
+  map.fitBounds([[currentLat, currentLng], [data.responder.lat, data.responder.lng]], { padding: [40, 40] });
+
+  connectWS();
+}
+
+function setStatus(status) {
+  const pill = document.getElementById('statusPill');
+  pill.className = `status-pill status-${status}`;
+  pill.textContent = status.replace('_', ' ');
+}
+
+function connectWS() {
+  ws = new WebSocket(`${WS_BASE}/ws/track/${incidentId}`);
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    if (msg.role === 'responder' && respMarker) {
+      respMarker.setLatLng([msg.lat, msg.lng]);
+    }
+  };
+  ws.onopen = () => {
+    setInterval(() => {
+      if (ws.readyState === 1) {
+        ws.send(JSON.stringify({ role: 'requester', lat: currentLat, lng: currentLng }));
+      }
+    }, 4000);
+  };
+}
+
+async function markResolved() {
+  if (!incidentId) return;
+  await fetch(`${API_BASE}/incidents/${incidentId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'resolved' })
+  });
+  setStatus('resolved');
+}
+
+function downloadReport() {
+  if (!incidentId) return;
+  window.open(`${API_BASE}/incidents/${incidentId}/report`, '_blank');
+}
+
+function resetFlow() {
+  document.getElementById('preSos').style.display = 'block';
+  document.getElementById('postSos').style.display = 'none';
+  if (ws) ws.close();
+  if (respMarker) { map.removeLayer(respMarker); respMarker = null; }
+  incidentId = null;
+}
+
+async function loadContacts() {
+  const res = await fetch(`${API_BASE}/contacts`, { headers: authHeaders() });
+  const contacts = await res.json();
+  const list = document.getElementById('contactList');
+  list.innerHTML = contacts.length
+    ? contacts.map(c => `
+        <div class="incident-item">
+          <div>
+            <div style="font-weight:500;">${c.name}</div>
+            <div style="color:var(--text-dim); font-size:12px;">${c.phone}${c.relation ? ' · ' + c.relation : ''}</div>
+          </div>
+          <button class="btn" onclick="deleteContact(${c.id})" style="padding:4px 10px; font-size:12px;">Remove</button>
+        </div>`).join('')
+    : '<div style="color:var(--text-dim); font-size:13px;">No trusted contacts yet — add one below.</div>';
+}
+
+async function addContact() {
+  const name = document.getElementById('contactName').value.trim();
+  const phone = document.getElementById('contactPhone').value.trim();
+  if (!name || !phone) return;
+  await fetch(`${API_BASE}/contacts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ name, phone, relation: '' })
+  });
+  document.getElementById('contactName').value = '';
+  document.getElementById('contactPhone').value = '';
+  loadContacts();
+}
+
+async function deleteContact(id) {
+  await fetch(`${API_BASE}/contacts/${id}`, { method: 'DELETE', headers: authHeaders() });
+  loadContacts();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const query = input.value.trim();
+  if (!query) return;
+  const log = document.getElementById('chatLog');
+
+  log.innerHTML += `<div class="msg user">${escapeHtml(query)}</div>`;
+  input.value = '';
+  log.scrollTop = log.scrollHeight;
+
+  const res = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query })
+  });
+  const data = await res.json();
+  log.innerHTML += `<div class="msg assistant">${escapeHtml(data.answer)}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById('chatInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChat();
+});
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+if (getUser() && getToken()) {
+  showApp();
+}
+</script>
+<div id="auditModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <div class="section-title">Rate this area's safety</div>
+    <div id="auditSliders"></div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <input id="auditNotes" placeholder="e.g. no streetlights after dark">
+    </div>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn btn-primary" style="flex:1" onclick="submitAudit()">Submit rating</button>
+      <button class="btn" style="flex:1" onclick="closeAuditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

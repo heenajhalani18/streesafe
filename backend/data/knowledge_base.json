@@ -1,0 +1,92 @@
+[
+  {
+    "id": "kb-001",
+    "category": "being_followed",
+    "title": "Being followed on foot",
+    "content": "If you believe someone is following you on foot, do not go home directly, since this reveals where you live. Head toward the nearest well-lit, populated place such as a shop, hotel lobby, or petrol pump. Cross the street and change direction once to confirm if the person is actually tracking your movement. Call a trusted contact and stay on the line so the follower knows you are not alone. Avoid narrow lanes, parking lots, and construction sites even if they are shortcuts."
+  },
+  {
+    "id": "kb-002",
+    "category": "being_followed",
+    "title": "Being followed by a vehicle",
+    "content": "If a vehicle is following you, walk against the direction of traffic so the vehicle would need to turn around to keep pace with you, which is harder for them and easier for you to notice. Note the vehicle color, make, and as much of the plate number as possible and share it with your emergency contact or the responder through the app. Move toward an open business or a group of people rather than an isolated area."
+  },
+  {
+    "id": "kb-003",
+    "category": "public_transport",
+    "title": "Feeling unsafe on public transport",
+    "content": "If you feel unsafe on a bus, train, or shared cab, sit or stand near the driver or conductor, or near other passengers, rather than in an isolated section. If someone is behaving inappropriately, state clearly and loudly that their behavior is unwelcome, which often draws attention from other passengers and de-escalates the situation. Share your live trip details with a trusted contact, including the vehicle number if it is a cab."
+  },
+  {
+    "id": "kb-004",
+    "category": "harassment",
+    "title": "Verbal harassment in public",
+    "content": "When facing verbal harassment, prioritize moving to a safer, more populated location over responding to the harasser. Loudly and clearly naming the behavior, for example stating that someone is following or touching you without consent, often prompts bystanders to intervene. Avoid engaging in prolonged arguments, as the goal is to remove yourself from the situation safely, not to win a confrontation."
+  },
+  {
+    "id": "kb-005",
+    "category": "harassment",
+    "title": "Physical grabbing or restraint",
+    "content": "If someone grabs your arm, bag, or clothing, a sharp, sudden movement toward the thumb side of their grip is generally the easiest way to break free, since the thumb is the weakest point of a grip. Shout for help while doing this to draw attention. Once free, move immediately toward people or a place you can enter, rather than stopping to argue."
+  },
+  {
+    "id": "kb-006",
+    "category": "first_aid",
+    "title": "Someone is bleeding heavily",
+    "content": "Apply firm, direct pressure to the wound using a clean cloth or your hand if nothing else is available, and do not remove the cloth even if it becomes soaked, simply add another layer on top. Keep the injured area raised above heart level if possible. Keep the person still, warm, and talking to you until responders arrive, since shock can set in quickly with significant blood loss."
+  },
+  {
+    "id": "kb-007",
+    "category": "first_aid",
+    "title": "Someone has fainted or is unresponsive",
+    "content": "Check if the person is breathing by watching their chest and listening close to their mouth. If they are breathing, place them on their side in the recovery position to keep their airway clear. If they are not breathing, begin chest compressions at the center of the chest, pressing hard and fast, and continue until help arrives or the person responds. Loosen tight clothing around the neck."
+  },
+  {
+    "id": "kb-008",
+    "category": "first_aid",
+    "title": "Panic attack or acute anxiety",
+    "content": "Help the person find a quiet spot away from crowds and encourage slow breathing, for example inhaling for four counts and exhaling for six. Speak in a calm, steady voice and avoid telling them to simply calm down, which rarely helps. Ask short, concrete questions like naming five things they can see, which helps redirect focus away from panic."
+  },
+  {
+    "id": "kb-009",
+    "category": "reporting",
+    "title": "What to do immediately after an incident",
+    "content": "As soon as you are safe, write down what happened while it is fresh, including time, location, and a description of anyone involved. If there is a visible injury or damage, photograph it. Preserve any messages, call logs, or images related to the incident rather than deleting them, even if they are upsetting, since they may be needed later."
+  },
+  {
+    "id": "kb-010",
+    "category": "reporting",
+    "title": "Filing a police report",
+    "content": "You can file a First Information Report at the nearest police station, and in many regions, women can also request that the report be recorded by a woman officer. You are entitled to a free copy of the FIR once it is filed. If a police station refuses to register a valid complaint, it can typically be escalated to a superior officer or the local women's helpline."
+  },
+  {
+    "id": "kb-011",
+    "category": "location_sharing",
+    "title": "Sharing your live location safely",
+    "content": "When sharing your live location with a responder or trusted contact, confirm they have actually received and opened the shared link rather than assuming it went through. Keep location sharing on for the full duration of your journey, not just at the start, since risk often increases mid-route. If your phone battery is low, tell your contact your last known location and your planned route before it dies."
+  },
+  {
+    "id": "kb-012",
+    "category": "safe_spaces",
+    "title": "Finding a safe space quickly",
+    "content": "Hospitals, police stations, petrol pumps, and 24-hour pharmacies are generally reliable safe spaces at any hour because they are staffed continuously. Hotel lobbies and large retail stores are good options during their operating hours. If you are unfamiliar with the area, a running auto-rickshaw or taxi stand with other people present is safer than an empty street corner."
+  },
+  {
+    "id": "kb-013",
+    "category": "self_defense",
+    "title": "Basic personal safety carry items",
+    "content": "A whistle or personal alarm can startle an aggressor and draw attention faster than shouting alone. Keeping your phone charged above 20 percent and your emergency contacts easily accessible from the lock screen matters more than any single gadget. If you carry pepper spray, know your local regulations on it and practice locating and using it one-handed before you actually need it."
+  },
+  {
+    "id": "kb-014",
+    "category": "domestic",
+    "title": "Feeling unsafe at home",
+    "content": "If you feel unsafe due to a family member or someone you live with, identify a safe room with a lockable door and a phone charger in advance, and agree on a code word with a trusted contact that signals you need them to call or come over without alerting anyone nearby. National domestic violence and women's helplines operate in most regions and can advise on shelters and legal protection orders."
+  },
+  {
+    "id": "kb-015",
+    "category": "cyber",
+    "title": "Online harassment or stalking",
+    "content": "Do not engage with or respond to an online harasser, as engagement often escalates the behavior. Screenshot the harassment with visible usernames and timestamps before blocking or reporting the account, since blocking first can sometimes hide the evidence. Most platforms and most countries now have dedicated cybercrime reporting channels for stalking and harassment."
+  }
+]

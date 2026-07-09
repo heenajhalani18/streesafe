@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreeSafe — Responder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark"></span><span class="display">StreeSafe</span></div>
+  <div class="nav-links">
+    <a href="index.html">Requester</a>
+    <a href="responder.html" class="active">Responder</a>
+    <a href="admin.html">Admin</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="grid">
+    <div class="card">
+      <div class="section-title">Live incident map</div>
+      <div id="map"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Active incidents</div>
+      <div id="incidentList">
+        <div style="color:var(--text-dim); font-size:13px;">Waiting for incidents… trigger an SOS from the requester view.</div>
+      </div>
+
+      <div id="activePanel" style="display:none; margin-top:16px;">
+        <div class="responder-card">
+          <div style="font-weight:500; margin-bottom:4px;" id="reqName">—</div>
+          <div style="color:var(--text-dim); font-size:13px;" id="reqMeta">—</div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="btn btn-primary" style="flex:1" onclick="startNavigating()">Navigate</button>
+          <button class="btn btn-safe" style="flex:1" onclick="markArrived()">Arrived</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/config.js"></script>
+<script>
+let map, myMarker, reqMarker, ws, activeIncident, moveTimer;
+let myLat = 26.9124, myLng = 75.7873; // Aarav's seed position
+
+function initMap() {
+  map = L.map('map').setView([myLat, myLng], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
+  myMarker = L.circleMarker([myLat, myLng], { radius: 8, color: '#2BAF8F', fillColor: '#2BAF8F', fillOpacity: 1 }).addTo(map).bindPopup('You (responder)');
+}
+initMap();
+
+async function pollIncidents() {
+  const res = await fetch(`${API_BASE}/incidents`);
+  const incidents = await res.json();
+  const active = incidents.find(i => i.status === 'matched' || i.status === 'en_route');
+
+  const list = document.getElementById('incidentList');
+  if (!active) {
+    list.innerHTML = `<div style="color:var(--text-dim); font-size:13px;">No active incidents right now.</div>`;
+    document.getElementById('activePanel').style.display = 'none';
+    return;
+  }
+
+  if (!activeIncident || activeIncident.id !== active.id) {
+    activeIncident = active;
+    list.innerHTML = '';
+    document.getElementById('activePanel').style.display = 'block';
+    document.getElementById('reqName').textContent = active.requester_name;
+    document.getElementById('reqMeta').textContent = `Status: ${active.status.replace('_',' ')}`;
+
+    if (reqMarker) map.removeLayer(reqMarker);
+    reqMarker = L.circleMarker([active.lat, active.lng], { radius: 8, color: '#E8543C', fillColor: '#E8543C', fillOpacity: 1 }).addTo(map).bindPopup(active.requester_name);
+    map.fitBounds([[myLat, myLng], [active.lat, active.lng]], { padding: [40, 40] });
+
+    connectWS(active.id);
+  }
+}
+
+function connectWS(incidentId) {
+  if (ws) ws.close();
+  ws = new WebSocket(`${WS_BASE}/ws/track/${incidentId}`);
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    if (msg.role === 'requester' && reqMarker) {
+      reqMarker.setLatLng([msg.lat, msg.lng]);
+    }
+  };
+}
+
+function startNavigating() {
+  if (!activeIncident || !ws) return;
+  const targetLat = activeIncident.lat, targetLng = activeIncident.lng;
+  clearInterval(moveTimer);
+  moveTimer = setInterval(() => {
+    myLat += (targetLat - myLat) * 0.15;
+    myLng += (targetLng - myLng) * 0.15;
+    myMarker.setLatLng([myLat, myLng]);
+    if (ws.readyState === 1) {
+      ws.send(JSON.stringify({ role: 'responder', lat: myLat, lng: myLng }));
+    }
+    if (Math.abs(targetLat - myLat) < 0.0005 && Math.abs(targetLng - myLng) < 0.0005) {
+      clearInterval(moveTimer);
+    }
+  }, 1000);
+}
+
+async function markArrived() {
+  if (!activeIncident) return;
+  await fetch(`${API_BASE}/incidents/${activeIncident.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'resolved' })
+  });
+  clearInterval(moveTimer);
+  activeIncident = null;
+}
+
+setInterval(pollIncidents, 2000);
+pollIncidents();
+</script>
+</body>
+</html>

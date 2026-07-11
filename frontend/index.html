@@ -68,6 +68,12 @@
           <button class="btn" onclick="addContact()">Add</button>
         </div>
       </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="section-title">Nearby safe places</div>
+        <button class="btn btn-safe" style="width:100%; margin-bottom:12px;" onclick="loadNearbyPlaces()">Find hospitals, police & pharmacies near me</button>
+        <div id="nearbyPlacesList" style="font-size:13px; color:var(--text-dim);"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -358,6 +364,49 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+let placeMarkers = [];
+
+async function loadNearbyPlaces() {
+  const listEl = document.getElementById('nearbyPlacesList');
+  listEl.innerHTML = 'Searching nearby... this can take up to 20 seconds.';
+
+  placeMarkers.forEach(m => map.removeLayer(m));
+  placeMarkers = [];
+
+  try {
+    const res = await fetch(`${API_BASE}/nearby-safe-places?lat=${currentLat}&lng=${currentLng}`);
+    const data = await res.json();
+
+    if (data.error) {
+      listEl.innerHTML = `<span style="color:var(--alert);">${data.error}</span>`;
+      return;
+    }
+    if (!data.places.length) {
+      listEl.innerHTML = 'No hospitals, police stations, or pharmacies found nearby.';
+      return;
+    }
+
+    const typeColor = { hospital: '#E8543C', police: '#2BAF8F', pharmacy: '#E8A63C' };
+    const typeLabel = { hospital: 'Hospital', police: 'Police', pharmacy: 'Pharmacy' };
+
+    placeMarkers = data.places.map(p => {
+      const color = typeColor[p.type] || '#8B92A5';
+      return L.circleMarker([p.lat, p.lng], { radius: 6, color, fillColor: color, fillOpacity: 0.8 })
+        .addTo(map)
+        .bindPopup(`<b>${p.name}</b><br>${typeLabel[p.type] || p.type}`);
+    });
+
+    listEl.innerHTML = data.places.map(p => `
+      <div class="incident-item">
+        <div style="font-weight:500;">${p.name}</div>
+        <span class="status-pill ${p.type === 'hospital' ? 'status-requested' : p.type === 'police' ? 'status-resolved' : 'status-matched'}">${typeLabel[p.type] || p.type}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<span style="color:var(--alert);">Something went wrong fetching nearby places.</span>';
+  }
 }
 
 if (getUser() && getToken()) {

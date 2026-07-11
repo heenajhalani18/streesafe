@@ -1,4 +1,6 @@
 import math
+import time
+import requests
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -410,6 +412,49 @@ and to make filing a First Information Report (FIR) at the nearest police
 station easier. It is not itself a police filing.
 """
     return report
+
+
+# ---------- Nearby safe places (OpenStreetMap Overpass API, no key required) ----------
+
+@app.get("/nearby-safe-places")
+def nearby_safe_places(lat: float, lng: float, radius_m: int = 1000):
+    query = (
+        f'[out:json][timeout:25];'
+        f'node["amenity"~"^(hospital|police|pharmacy)$"](around:{radius_m},{lat},{lng});'
+        f'out center 20;'
+    )
+
+    elements = []
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                "https://overpass-api.de/api/interpreter",
+                data={"data": query},
+                headers={"User-Agent": "StreeSafe/1.0 (safety app; contact: heena@example.com)"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            elements = resp.json().get("elements", [])
+            last_error = None
+            break
+        except Exception as e:
+            last_error = e
+            time.sleep(2)
+
+    if last_error is not None:
+        return {"places": [], "error": "The map data service is temporarily busy. Please try again in a moment."}
+
+    places = []
+    for el in elements:
+        tags = el.get("tags", {})
+        places.append({
+            "name": tags.get("name", tags.get("amenity", "Unnamed")),
+            "type": tags.get("amenity", "other"),
+            "lat": el.get("lat"),
+            "lng": el.get("lon"),
+        })
+    return {"places": places}
 
 
 # ---------- Admin stats ----------

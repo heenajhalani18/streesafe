@@ -54,7 +54,7 @@ let myLat = 26.9124, myLng = 75.7873; // Aarav's seed position
 function initMap() {
   map = L.map('map').setView([myLat, myLng], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
-  myMarker = L.circleMarker([myLat, myLng], { radius: 8, color: '#2BAF8F', fillColor: '#2BAF8F', fillOpacity: 1 }).addTo(map).bindPopup('You (responder)');
+  myMarker = L.circleMarker([myLat, myLng], { radius: 8, color: '#4F9153', fillColor: '#4F9153', fillOpacity: 1 }).addTo(map).bindPopup('You (responder)');
 }
 initMap();
 
@@ -78,7 +78,7 @@ async function pollIncidents() {
     document.getElementById('reqMeta').textContent = `Status: ${active.status.replace('_',' ')}`;
 
     if (reqMarker) map.removeLayer(reqMarker);
-    reqMarker = L.circleMarker([active.lat, active.lng], { radius: 8, color: '#E8543C', fillColor: '#E8543C', fillOpacity: 1 }).addTo(map).bindPopup(active.requester_name);
+    reqMarker = L.circleMarker([active.lat, active.lng], { radius: 8, color: '#D4537E', fillColor: '#D4537E', fillOpacity: 1 }).addTo(map).bindPopup(active.requester_name);
     map.fitBounds([[myLat, myLng], [active.lat, active.lng]], { padding: [40, 40] });
 
     connectWS(active.id);

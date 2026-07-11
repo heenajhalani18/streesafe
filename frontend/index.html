@@ -165,7 +165,7 @@ function showApp() {
 function initMap() {
   map = L.map('map').setView([currentLat, currentLng], 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
-  myMarker = L.circleMarker([currentLat, currentLng], { radius: 8, color: '#E8543C', fillColor: '#E8543C', fillOpacity: 1 }).addTo(map).bindPopup('You');
+  myMarker = L.circleMarker([currentLat, currentLng], { radius: 8, color: '#D4537E', fillColor: '#D4537E', fillOpacity: 1 }).addTo(map).bindPopup('You');
 
   map.on('click', (e) => {
     openAuditModal(e.latlng.lat, e.latlng.lng);
@@ -177,7 +177,7 @@ async function loadSafetyScores() {
   const audits = await res.json();
   unsafeMarkers.forEach(m => map.removeLayer(m));
   unsafeMarkers = audits.map(a => {
-    const color = a.safety_score >= 3.5 ? '#2BAF8F' : (a.safety_score >= 2 ? '#E8A63C' : '#E8543C');
+    const color = a.safety_score >= 3.5 ? '#4F9153' : (a.safety_score >= 2 ? '#C97F1E' : '#D4537E');
     return L.circleMarker([a.lat, a.lng], { radius: 7, color, fillColor: color, fillOpacity: 0.7 })
       .addTo(map)
       .bindPopup(`<b>Safety score: ${a.safety_score}/5</b><br>${a.notes || 'No details'}`);
@@ -255,7 +255,7 @@ async function triggerSOS() {
     ? `Notified: ${data.notified_contacts.map(c => c.name).join(', ')}`
     : 'No trusted contacts to notify yet — add some below.';
 
-  respMarker = L.circleMarker([data.responder.lat, data.responder.lng], { radius: 8, color: '#2BAF8F', fillColor: '#2BAF8F', fillOpacity: 1 }).addTo(map).bindPopup(data.responder.name);
+  respMarker = L.circleMarker([data.responder.lat, data.responder.lng], { radius: 8, color: '#4F9153', fillColor: '#4F9153', fillOpacity: 1 }).addTo(map).bindPopup(data.responder.name);
   map.fitBounds([[currentLat, currentLng], [data.responder.lat, data.responder.lng]], { padding: [40, 40] });
 
   connectWS();
@@ -394,7 +394,7 @@ async function loadNearbyPlaces() {
       return;
     }
 
-    const typeColor = { hospital: '#E8543C', police: '#2BAF8F', pharmacy: '#E8A63C' };
+    const typeColor = { hospital: '#D4537E', police: '#4F9153', pharmacy: '#C97F1E' };
     const typeLabel = { hospital: 'Hospital', police: 'Police', pharmacy: 'Pharmacy' };
 
     placeMarkers = data.places.map(p => {

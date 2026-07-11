@@ -457,6 +457,17 @@ def nearby_safe_places(lat: float, lng: float, radius_m: int = 1000):
     return {"places": places}
 
 
+# ---------- Find Support directory (static, curated, verified helplines) ----------
+
+@app.get("/support-resources")
+def support_resources():
+    import json as _json
+    from pathlib import Path as _Path
+    path = _Path(__file__).parent / "data" / "support_resources.json"
+    with open(path, "r") as f:
+        return _json.load(f)
+
+
 # ---------- Admin stats ----------
 
 @app.get("/stats")

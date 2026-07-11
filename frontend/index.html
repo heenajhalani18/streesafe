@@ -74,6 +74,11 @@
         <button class="btn btn-safe" style="width:100%; margin-bottom:12px;" onclick="loadNearbyPlaces()">Find hospitals, police & pharmacies near me</button>
         <div id="nearbyPlacesList" style="font-size:13px; color:var(--text-dim);"></div>
       </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="section-title">Find support — helplines & NGOs</div>
+        <div id="supportList" style="font-size:13px;">Loading...</div>
+      </div>
     </div>
 
     <div class="card">
@@ -154,6 +159,7 @@ function showApp() {
   initMap();
   loadContacts();
   loadSafetyScores();
+  loadSupportResources();
 }
 
 function initMap() {
@@ -406,6 +412,37 @@ async function loadNearbyPlaces() {
     `).join('');
   } catch (e) {
     listEl.innerHTML = '<span style="color:var(--alert);">Something went wrong fetching nearby places.</span>';
+  }
+}
+
+async function loadSupportResources() {
+  const listEl = document.getElementById('supportList');
+  try {
+    const res = await fetch(`${API_BASE}/support-resources`);
+    const resources = await res.json();
+
+    const grouped = {};
+    resources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r);
+    });
+
+    listEl.innerHTML = Object.entries(grouped).map(([category, items]) => `
+      <div style="margin-bottom:14px;">
+        <div style="color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">${category}</div>
+        ${items.map(r => `
+          <div class="incident-item">
+            <div>
+              <div style="font-weight:500;">${r.name}</div>
+              <div style="color:var(--text-dim); font-size:12px;">${r.notes}</div>
+            </div>
+            ${/^[0-9+\-\/\s]+$/.test(r.phone) ? `<a href="tel:${r.phone.replace(/[^0-9+]/g, '')}" class="status-pill status-resolved" style="text-decoration:none; white-space:nowrap;">${r.phone}</a>` : `<span class="status-pill status-matched" style="white-space:nowrap;">${r.phone}</span>`}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<span style="color:var(--alert);">Could not load support resources.</span>';
   }
 }
 

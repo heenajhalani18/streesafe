@@ -1,0 +1,12 @@
+[
+  {"category": "National helpline", "name": "Women Helpline (All India)", "phone": "181", "notes": "24x7 toll-free helpline for women in distress, run by the Ministry of Women and Child Development. Connects to police, hospitals, legal aid, and protection officers."},
+  {"category": "National helpline", "name": "Emergency Response Support System", "phone": "112", "notes": "India's unified emergency number covering police, fire, and ambulance, available 24x7."},
+  {"category": "National helpline", "name": "Police", "phone": "100", "notes": "Direct police helpline, also reachable via 112."},
+  {"category": "National helpline", "name": "Ambulance / Disaster Management", "phone": "108", "notes": "Free emergency ambulance service in most states."},
+  {"category": "National helpline", "name": "Cyber Crime Helpline", "phone": "1930", "notes": "24x7 national helpline run by the Ministry of Home Affairs for reporting cybercrime and financial fraud. Also file complaints at cybercrime.gov.in."},
+  {"category": "National helpline", "name": "Childline (for minors)", "phone": "1098", "notes": "24x7 helpline for children in need of aid or protection."},
+  {"category": "Government body", "name": "National Commission for Women — 24x7 helpline", "phone": "7827170170", "notes": "For complaints of domestic violence, sexual violence, and harassment."},
+  {"category": "Government body", "name": "National Commission for Women — office", "phone": "011-26942369", "notes": "General office line; complaints can also be filed online at ncw.nic.in."},
+  {"category": "Local support", "name": "Nearest police station women's help desk", "phone": "Dial 100 or 181 first", "notes": "Most police stations in India now have a dedicated women's help desk — ask for it by name when you arrive or call ahead via 100."},
+  {"category": "NGO / Shelter", "name": "Sakhi One Stop Centres", "phone": "181", "notes": "Government-run centres present in most districts, offering medical, legal, police, and counselling support under one roof for women affected by violence. Reachable via the 181 helpline."}
+]

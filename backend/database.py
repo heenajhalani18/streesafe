@@ -43,6 +43,8 @@ class Responder(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     phone = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=True, index=True)
+    password_hash = Column(String, nullable=True)
     responder_type = Column(String, default="volunteer")  # volunteer | trusted_contact
     lat = Column(Float, default=0.0)
     lng = Column(Float, default=0.0)

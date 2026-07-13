@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from database import init_db, get_db, Responder, Incident, User, TrustedContact, UnsafeArea, SafetyAudit
 from rag import safety_rag
-from auth import hash_password, verify_password, create_token, get_current_user, decode_token
+from auth import hash_password, verify_password, create_token, get_current_user, get_current_responder, decode_token
 
 app = FastAPI(title="StreeSafe API")
 
@@ -59,8 +59,10 @@ def get_optional_user(authorization: str = Header(default=None), db: Session = D
     if not authorization or not authorization.startswith("Bearer "):
         return None
     try:
-        user_id = decode_token(authorization.split(" ", 1)[1])
-        return db.query(User).get(user_id)
+        claims = decode_token(authorization.split(" ", 1)[1])
+        if claims["role"] != "user":
+            return None
+        return db.query(User).get(claims["id"])
     except HTTPException:
         return None
 
@@ -165,6 +167,25 @@ def me(user: User = Depends(get_current_user)):
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone}
 
 
+class ResponderRegisterIn(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    password: str
+    lat: float = 26.9124
+    lng: float = 75.7873
+
+
+class ResponderLoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ResponderLocationIn(BaseModel):
+    lat: float
+    lng: float
+
+
 # ---------- Trusted contacts ----------
 
 @app.post("/contacts")
@@ -191,6 +212,71 @@ def delete_contact(contact_id: int, user: User = Depends(get_current_user), db: 
     return {"ok": True}
 
 
+# ---------- Responder auth ----------
+
+@app.post("/responder-auth/register")
+def register_responder(payload: ResponderRegisterIn, db: Session = Depends(get_db)):
+    if db.query(Responder).filter(Responder.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="A responder account with this email already exists")
+    responder = Responder(
+        name=payload.name,
+        email=payload.email,
+        phone=payload.phone,
+        password_hash=hash_password(payload.password),
+        lat=payload.lat,
+        lng=payload.lng,
+        is_available="true",
+    )
+    db.add(responder)
+    db.commit()
+    db.refresh(responder)
+    token = create_token(responder.id, role="responder")
+    return {"token": token, "responder": {"id": responder.id, "name": responder.name, "email": responder.email}}
+
+
+@app.post("/responder-auth/login")
+def login_responder(payload: ResponderLoginIn, db: Session = Depends(get_db)):
+    responder = db.query(Responder).filter(Responder.email == payload.email).first()
+    if not responder or not responder.password_hash or not verify_password(payload.password, responder.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    token = create_token(responder.id, role="responder")
+    return {"token": token, "responder": {"id": responder.id, "name": responder.name, "email": responder.email}}
+
+
+@app.get("/responder-auth/me")
+def responder_me(responder: Responder = Depends(get_current_responder)):
+    return {"id": responder.id, "name": responder.name, "email": responder.email, "phone": responder.phone, "lat": responder.lat, "lng": responder.lng}
+
+
+@app.patch("/responder-auth/location")
+def update_responder_location(payload: ResponderLocationIn, responder: Responder = Depends(get_current_responder), db: Session = Depends(get_db)):
+    responder.lat = payload.lat
+    responder.lng = payload.lng
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/my-incidents")
+def my_assigned_incidents(responder: Responder = Depends(get_current_responder), db: Session = Depends(get_db)):
+    incidents = (
+        db.query(Incident)
+        .filter(Incident.responder_id == responder.id, Incident.status.in_(["matched", "en_route"]))
+        .order_by(Incident.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": i.id,
+            "requester_name": i.requester_name,
+            "status": i.status,
+            "lat": i.lat,
+            "lng": i.lng,
+            "created_at": i.created_at.isoformat(),
+        }
+        for i in incidents
+    ]
+
+
 # ---------- Responders ----------
 
 @app.post("/responders")
@@ -204,7 +290,19 @@ def create_responder(payload: ResponderIn, db: Session = Depends(get_db)):
 
 @app.get("/responders")
 def list_responders(db: Session = Depends(get_db)):
-    return db.query(Responder).all()
+    responders = db.query(Responder).all()
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "phone": r.phone,
+            "responder_type": r.responder_type,
+            "lat": r.lat,
+            "lng": r.lng,
+            "is_available": r.is_available,
+        }
+        for r in responders
+    ]
 
 
 # ---------- Unsafe area reporting ----------

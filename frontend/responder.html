@@ -11,14 +11,36 @@
 
 <div class="topbar">
   <div class="brand"><span class="mark"></span><span class="display">StreeSafe</span></div>
-  <div class="nav-links">
-    <a href="index.html">Requester</a>
-    <a href="responder.html" class="active">Responder</a>
-    <a href="admin.html">Admin</a>
+  <div style="display:flex; align-items:center; gap:18px;">
+    <div class="nav-links">
+      <a href="index.html">Requester</a>
+      <a href="responder.html" class="active">Responder</a>
+      <a href="admin.html">Admin</a>
+    </div>
+    <div id="responderBadge" style="display:none; font-size:13px; color:var(--text-dim);"></div>
   </div>
 </div>
 
-<div class="container">
+<!-- AUTH GATE -->
+<div class="container" id="authGate" style="max-width:420px;">
+  <div class="card">
+    <div class="section-title" id="authTitle">Responder log in</div>
+    <div id="authError" style="display:none; color:var(--alert); font-size:13px; margin-bottom:10px;"></div>
+
+    <div id="registerFields" style="display:none;">
+      <div class="field"><label>Name</label><input id="regName" placeholder="Your full name"></div>
+      <div class="field"><label>Phone</label><input id="regPhone" placeholder="+91-XXXXXXXXXX"></div>
+    </div>
+    <div class="field"><label>Email</label><input id="authEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="••••••••"></div>
+
+    <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" id="authSubmitBtn" onclick="submitAuth()">Log in</button>
+    <button class="btn" style="width:100%;" onclick="toggleAuthMode()" id="authToggleBtn">Don't have a responder account? Register</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="container" id="mainApp" style="display:none;">
   <div class="grid">
     <div class="card">
       <div class="section-title">Live incident map</div>
@@ -26,9 +48,9 @@
     </div>
 
     <div class="card">
-      <div class="section-title">Active incidents</div>
+      <div class="section-title">Your assigned incidents</div>
       <div id="incidentList">
-        <div style="color:var(--text-dim); font-size:13px;">Waiting for incidents… trigger an SOS from the requester view.</div>
+        <div style="color:var(--text-dim); font-size:13px;">Checking for assigned incidents…</div>
       </div>
 
       <div id="activePanel" style="display:none; margin-top:16px;">
@@ -47,26 +69,81 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <script>
 let map, myMarker, reqMarker, ws, activeIncident, moveTimer;
-let myLat = 26.9124, myLng = 75.7873; // Aarav's seed position
+let myLat = 26.9124, myLng = 75.7873;
+let isRegisterMode = false;
+
+function toggleAuthMode() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('registerFields').style.display = isRegisterMode ? 'block' : 'none';
+  document.getElementById('authTitle').textContent = isRegisterMode ? 'Create a responder account' : 'Responder log in';
+  document.getElementById('authSubmitBtn').textContent = isRegisterMode ? 'Register' : 'Log in';
+  document.getElementById('authToggleBtn').textContent = isRegisterMode ? 'Already registered? Log in' : "Don't have a responder account? Register";
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errBox = document.getElementById('authError');
+  errBox.style.display = 'none';
+
+  try {
+    if (isRegisterMode) {
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      if (!name || !phone || !email || !password) throw new Error('Please fill in all fields');
+      await registerResponder(name, email, phone, password, myLat, myLng);
+    } else {
+      if (!email || !password) throw new Error('Please enter email and password');
+      await loginResponder(email, password);
+    }
+    showApp();
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+  }
+}
+
+async function showApp() {
+  const responder = getResponder();
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  const badge = document.getElementById('responderBadge');
+  badge.style.display = 'block';
+  badge.innerHTML = `${responder.name} · <a href="#" onclick="logoutResponder(); return false;" style="color:var(--alert);">Log out</a>`;
+
+  try {
+    const meRes = await fetch(`${API_BASE}/responder-auth/me`, { headers: responderAuthHeaders() });
+    const me = await meRes.json();
+    myLat = me.lat;
+    myLng = me.lng;
+  } catch (e) { /* fall back to defaults */ }
+
+  initMap();
+  pollIncidents();
+  setInterval(pollIncidents, 3000);
+}
 
 function initMap() {
   map = L.map('map').setView([myLat, myLng], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
   myMarker = L.circleMarker([myLat, myLng], { radius: 8, color: '#4F9153', fillColor: '#4F9153', fillOpacity: 1 }).addTo(map).bindPopup('You (responder)');
 }
-initMap();
 
 async function pollIncidents() {
-  const res = await fetch(`${API_BASE}/incidents`);
+  const res = await fetch(`${API_BASE}/my-incidents`, { headers: responderAuthHeaders() });
+  if (!res.ok) return;
   const incidents = await res.json();
-  const active = incidents.find(i => i.status === 'matched' || i.status === 'en_route');
+  const active = incidents[0];
 
   const list = document.getElementById('incidentList');
   if (!active) {
-    list.innerHTML = `<div style="color:var(--text-dim); font-size:13px;">No active incidents right now.</div>`;
+    list.innerHTML = `<div style="color:var(--text-dim); font-size:13px;">No active incidents assigned to you right now.</div>`;
     document.getElementById('activePanel').style.display = 'none';
+    activeIncident = null;
     return;
   }
 
@@ -100,13 +177,18 @@ function startNavigating() {
   if (!activeIncident || !ws) return;
   const targetLat = activeIncident.lat, targetLng = activeIncident.lng;
   clearInterval(moveTimer);
-  moveTimer = setInterval(() => {
+  moveTimer = setInterval(async () => {
     myLat += (targetLat - myLat) * 0.15;
     myLng += (targetLng - myLng) * 0.15;
     myMarker.setLatLng([myLat, myLng]);
     if (ws.readyState === 1) {
       ws.send(JSON.stringify({ role: 'responder', lat: myLat, lng: myLng }));
     }
+    await fetch(`${API_BASE}/responder-auth/location`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...responderAuthHeaders() },
+      body: JSON.stringify({ lat: myLat, lng: myLng })
+    });
     if (Math.abs(targetLat - myLat) < 0.0005 && Math.abs(targetLng - myLng) < 0.0005) {
       clearInterval(moveTimer);
     }
@@ -124,8 +206,9 @@ async function markArrived() {
   activeIncident = null;
 }
 
-setInterval(pollIncidents, 2000);
-pollIncidents();
+if (getResponder() && getResponderToken()) {
+  showApp();
+}
 </script>
 </body>
 </html>
